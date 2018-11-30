@@ -93,3 +93,160 @@ JS没有类似于JAVA里包的概念，就是把逻辑相关的代码放进一�
     - API文档不齐全，学习成本高
 
 #### `决定使用的模块规范AMD`
+
+#### require的使用教程
+
+    解决问题：如果加载require本身出现卡顿呢？使用如下方法
+
+`<script src="js/require.js" defer async="true"></script>`
+
+- 把requireJS放到body后加载，并加入 defer 属性（defer 属性规定是否对脚本执行进行延迟，直到页面加载为止，只有IE支持）
+
+-  async="async" (加入了 html5 出的 async 异步属性，async 属性规定一旦脚本可用，则会异步执行。IE 不支持)
+    - async 属性仅适用于外部脚本（只有在使用 src 属性时）。 页面内的JS不适用
+    - 如果 async="async"：脚本相对于页面的其余部分异步地执行（当页面继续进行解析时，脚本将被执行）
+    - 如果不使用 async 且 defer="defer"：脚本将在页面完成解析时执行
+    - 如果不使用 async 且 defer="defer"：脚本将在页面完成解析时执行
+    - 如果既不使用 async 也不使用 defer：在浏览器继续解析页面之前，立即读取并执行脚本
+
+##### data-main 的使用
+
+    　<script src="js/require.js" data-main="js/main"></script>
+
+- data-main属性的作用:
+    
+    `指定网页程序的主模块。在上例中，就是js目录下面的main.js，这个文件会第一个被require.js加载。由于require.js默认的文件后缀名是js，所以可以把main.js简写成main。`
+    个人理解就是把一个入口的JS 通过require 引入进去。当然这个入口的JS写了大部分页面要用的业务逻辑
+
+##### 主模块的写法，也就是入口文件的写法
+
+如果我们的代码不依赖任何其他模块，那么可以直接写入javascript代码。
+
+```javascript
+    console.log("使用dta-main成功！");
+```
+
+但是真正常见的情况是，主模块依赖于其他模块，这时就要使用AMD规范定义的的require()函数。
+
+```javascript
+    require(['moduleA', 'moduleB', 'moduleC'], function (moduleA, moduleB, moduleC){
+
+　　　　// 写代码的地方
+
+　　});
+```
+require()函数接受两个参数。第一个参数是一个数组，表示所依赖的模块，上例就是['moduleA', 'moduleB', 'moduleC']，即主模块依赖这三个模块；第二个参数是一个回调函数，当前面指定的模块都加载成功后，它将被调用。加载的模块会以参数形式传入该函数，从而在回调函数内部就可以使用这些模块。
+
+`require()异步加载moduleA，moduleB和moduleC，浏览器不会失去响应；它指定的回调函数，只有前面的模块都加载成功后，才会运行，解决了依赖性的问题。`
+
+- 实例
+
+```javascript
+require(['moduleA'],function(moduleA){
+    console.log(A);
+})
+```
+
+##### 模块的加载
+
+在require函数的第一个参数写的依赖模块，在与入口文件main.js为同一文件夹的时候可以不用写声明加载，直接写在第一个参数里，直接调用，保证参数名与文件名相同就可。
+
+不过使用require.config()方法，我们可以对模块的加载行为进行自定义。require.config()就写在主模块（main.js）的头部。参数就是一个对象，这个对象的paths属性指定各个模块的加载路径。
+
+```javascript
+require.config({
+
+　　　　paths: {
+
+　　　　　　"A": "moduleA",//在同一路径
+　　　　　　"B": "lib/moduleB",//在lib的文件夹下的
+　　　　　　"C": "lib/moduleC"
+
+　　　　}
+
+　　});
+```
+
+另一种则是直接改变基目录（baseUrl）。
+
+```javascript
+require.config({
+        baseUrl: "js/lib",//直接配置默认路径
+　　　　paths: {
+　　　　　　"B": "moduleB",//在lib的文件夹下的
+　　　　　　"C": "moduleC"
+　　　　}
+
+　　});
+```
+
+如果某个模块在另一台主机上，也可以直接指定它的网址
+
+```javascript
+require.config({
+　　　　paths: {
+        "jquery":"https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min"
+　　　　}
+
+　　});
+```
+`require.js要求，每个模块是一个单独的js文件。这样的话，如果加载多个模块，就会发出多次HTTP请求，会影响网页的加载速度。因此，require.js提供了一个优化工具，当模块部署完毕以后，可以用这个工具将多个模块合并在一个文件中，减少HTTP请求数。`
+
+##### AMD模块的写法
+
+- require.js加载的模块，采用AMD规范。也就是说，模块必须按照AMD的规定来写。
+
+    具体来说，就是模块必须采用特定的define()函数来定义。如果一个模块不依赖其他模块，那么可以直接定义在define()函数之中。
+
+假定现在有一个module.js文件，它定义了一个module模块。那么，module.js就要这样写：
+
+```javascript
+define(function (){
+
+　　　　var A = "我是模块A！快来点我！";//定义
+
+　　　　return {//出口
+
+            A: A
+　　　　};
+
+　　});
+```
+
+如果这个模块还依赖其他模块，那么define()函数的第一个参数，必须是一个数组，指明该模块的依赖性。
+
+```javascript
+　　define(['moduleB'], function(moduleB){//在入口文件怎么定义的moduleB，那么这块就引入什么名称
+
+          var C=moduleB.C();
+
+　　　　return {
+            C : C
+　　　　};
+
+　　});
+```
+当require()函数加载上面这个模块的时候，就会先加载moduleB文件。
+
+##### 加载非规范的模块
+
+理论上，require.js加载的模块，必须是按照AMD规范、用define()函数定义的模块。但是实际上，虽然已经有一部分流行的函数库（比如jQuery）符合AMD规范，更多的库并不符合。
+
+所以 要用require.config()方法，定义它们的一些特征。
+
+
+```javascript
+　　require.config({
+    shim: {//配置不是AMD规范的JS,不过路径也要照常配置
+        "D": {
+            exports: 'D',//出口D模块的暴露入口
+        },
+        "E": {
+            deps: ['D'],//E模块依赖于D模块所以需要提前声明,声明的名称是 路径配置名称 
+            exports: 'E',
+        },
+    },
+})
+
+```
+require.config()接受一个配置对象，这个对象除了有前面说过的paths属性之外，还有一个shim属性，专门用来配置不兼容的模块。具体来说，每个模块要定义（1）exports值（输出的变量名），表明这个模块外部调用时的名称；（2）deps数组，表明该模块的依赖性。
